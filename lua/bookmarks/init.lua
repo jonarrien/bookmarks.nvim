@@ -12,16 +12,11 @@ function b.add()
     local filename = vim.api.nvim_buf_get_name(0)
     local line = vim.api.nvim_eval("line('.')")
 
-    local description = ""
     vim.ui.input({ prompt = title, default = "" }, function(input)
         if input ~= nil then
-            description = input
+            l.add(filename, line, input)
         end
     end)
-
-    if description ~= "" then
-      l.add(filename, line, description)
-    end
 end
 
 function b.delete()

@@ -10,12 +10,12 @@ local l = {
 }
 
 local function project_path()
-    local cwd = vim.api.nvim_eval("getcwd()")
-    local file = string.gsub(cwd, l.path_sep, "_") .. ".json"
-    return string.format("%s%s%s", l.data_dir, l.path_sep, file)
+    local cwd = vim.fn.getcwd()
+    l.data_filename = string.gsub(cwd, l.path_sep, "_") .. ".json"
+    return string.format("%s%s%s", l.data_dir, l.path_sep, l.data_filename)
 end
 
-function compare_updated_at(a,b)
+local function compare_updated_at(a,b)
   return a.updated_at < b.updated_at
 end
 
@@ -25,16 +25,12 @@ function l.setup(opts)
     if l.is_windows then
         l.path_sep = "\\"
     end
-
-    print("Setting up bookmarks...")
-    print(opts)
 end
 
 function l.load_data()
-    local cwd = project_path()
+    local cwd = vim.fn.getcwd()
 
-    if l.cwd ~= nil and cwd ~= l.cwd then -- maybe change session
-        l.save()
+    if l.cwd ~= nil and cwd ~= l.cwd then
         l.data = {}
         l.loaded_data = false
     end
@@ -43,22 +39,22 @@ function l.load_data()
         return
     end
 
-    if not vim.loop.fs_stat(l.data_dir) then
-        assert(os.execute("mkdir " .. l.data_dir))
-    end
+    local path = project_path()
 
-    if not vim.loop.fs_stat(cwd) then
-        print("No bookmarks file")
+    if not vim.loop.fs_stat(path) then
+        l.cwd = cwd
         l.data = {}
-        l.loaded_data = false
+        l.save()
+        l.loaded_data = true
         return
     end
 
-    local f = assert(io.open(cwd, "rb"))
+    local f = assert(io.open(path, "rb"))
     local content = f:read("*all")
     f:close()
 
     local parsed = vim.json.decode(content or "[]")
+    l.cwd = cwd
     l.data = parsed
     l.loaded_data = true
     table.sort(parsed, compare_updated_at)
@@ -94,10 +90,7 @@ function l.save()
         assert(os.execute("mkdir " .. l.data_dir))
     end
 
-    local cwd = vim.api.nvim_eval("getcwd()")
-    local file = string.gsub(cwd, l.path_sep, "_") .. ".json"
-    local path = string.format("%s%s%s", l.data_dir, l.path_sep, file)
-
+    local path = project_path()
     local out = assert(io.open(path, "w"))
     out:write(vim.json.encode(l.data or {}))
     out:close()
